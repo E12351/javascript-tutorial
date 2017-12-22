@@ -1,9 +1,17 @@
+
+var authEndpoint = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?';
+var redirectUri = 'http://localhost:8000';
+var appId = '11b82f31-02fb-415d-9de8-48523c67a3b9';
+var scopes = 'openid profile User.Read Mail.Read Calendars.Read Contacts.Read';
+
+  obj = {
+    "cryptObj":"",
+    "x":0
+  }
+
 $(function() {
   // App configuration
-  var authEndpoint = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?';
-  var redirectUri = 'http://localhost:8000';
-  var appId = '11b82f31-02fb-415d-9de8-48523c67a3b9';
-  var scopes = 'openid profile User.Read Mail.Read Calendars.Read Contacts.Read';
+
 
   // Check for browser support for sessionStorage
   if (typeof(Storage) === 'undefined') {
@@ -12,9 +20,9 @@ $(function() {
   }
 
   // Check for browser support for crypto.getRandomValues
-  var cryptObj = window.crypto || window.msCrypto; // For IE11
+  obj.cryptObj = window.crypto || window.msCrypto; // For IE11
 
-  if (cryptObj === undefined || cryptObj.getRandomValues === 'undefined') {
+  if (obj.cryptObj === undefined || obj.cryptObj.getRandomValues === 'undefined') {
     console.log('log.info.ERROR : '+'Un supported browser.');
     return;
   }
@@ -23,6 +31,8 @@ $(function() {
   var isAuthenticated = (sessionStorage.accessToken != null && sessionStorage.accessToken.length > 0);
     // renderNav(isAuthenticated);
   renderTokens();
+
+  renderWelcome(isAuthenticated);
 
 
   render(window.location.hash);
@@ -37,14 +47,14 @@ $(function() {
 
     // Check for presence of access token
     // var isAuthenticated = (sessionStorage.accessToken != null && sessionStorage.accessToken.length > 0);
-    // // renderNav(isAuthenticated);
+    // renderNav(isAuthenticated);
     // renderTokens();
     
     var pagemap = {
       
       // Welcome page
       '': function() {
-        renderWelcome(isAuthenticated);
+        // renderWelcome(isAuthenticated);
       },
 
       // Receive access token
@@ -78,63 +88,78 @@ $(function() {
 
   }
 
-  function renderTokens() {
+
+
+  Handlebars.registerHelper("formatDate", function(datetime){
+    // Dates from API look like:
+    // 2016-06-27T14:06:13Z
+
+    var date = new Date(datetime);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  });
+});
+
+
+function renderTokens() {
     if (sessionStorage.accessToken) {
-      // For demo purposes display the token and expiration
-      var expireDate = new Date(parseInt(sessionStorage.tokenExpires));
-      $('#token', window.parent.document).text(sessionStorage.accessToken);
-      $('#expires-display', window.parent.document).text(expireDate.toLocaleDateString() + ' ' + expireDate.toLocaleTimeString());
-      if (sessionStorage.idToken) {
-        $('#id-token', window.parent.document).text(sessionStorage.idToken);
-      }
-      $('#token-display', window.parent.document).show();
+        // For demo purposes display the token and expiration
+        var expireDate = new Date(parseInt(sessionStorage.tokenExpires));
+        $('#token', window.parent.document).text(sessionStorage.accessToken);
+        $('#expires-display', window.parent.document).text(expireDate.toLocaleDateString() + ' ' + expireDate.toLocaleTimeString());
+        if (sessionStorage.idToken) {
+            $('#id-token', window.parent.document).text(sessionStorage.idToken);
+        }
+        $('#token-display', window.parent.document).show();
+        console.log('log.info :'+'token passed.');
     } else {
-      $('#token-display', window.parent.document).hide();
+        $('#token-display', window.parent.document).hide();
     }
-  }
+}
 
-  
-  function renderWelcome(isAuthed) {
+
+function renderWelcome(isAuthed) {
     if (isAuthed) {
-      console.log('log.info : '+'User already authencated.');
+        console.log('log.info : '+'User already authencated.');
     } else {
-      $('#connect-button').attr('href', buildAuthUrl());
-      $('#signin-prompt').show();
+        $('#connect-button').attr('href', buildAuthUrl());
+        // $('#signin-prompt').show();
     }
-  }
+}
 
-  function renderCalendar() {
+function renderCalendar() {
     getUserEmailAddress(function(userEmail, error) {
         getUserEvents(userEmail, function(events, error){
             console.log(events);
         });
     });
-  }
+}
 
-  // OAUTH FUNCTIONS =============================
+// OAUTH FUNCTIONS =============================
 
-  function buildAuthUrl() {
+function buildAuthUrl() {
     // Generate random values for state and nonce
     sessionStorage.authState = guid();
     sessionStorage.authNonce = guid();
 
     var authParams = {
-      response_type: 'id_token token',
-      client_id: appId,
-      redirect_uri: redirectUri,
-      scope: scopes,
-      state: sessionStorage.authState,
-      nonce: sessionStorage.authNonce,
-      response_mode: 'fragment'
+        response_type: 'id_token token',
+        client_id: appId,
+        redirect_uri: redirectUri,
+        scope: scopes,
+        state: sessionStorage.authState,
+        nonce: sessionStorage.authNonce,
+        response_mode: 'fragment'
     };
 
     console.log('log.info :'+authEndpoint + $.param(authParams));
 
     return authEndpoint + $.param(authParams);
-  }
+}
 
-  function handleTokenResponse(hash) {
+function handleTokenResponse(hash) {
     // If this was a silent request remove the iframe
+
+    // console.log('log.info :'+hash);
     $('#auth-iframe').remove();
 
     // clear tokens
@@ -145,16 +170,17 @@ $(function() {
 
     // Check that state is what we sent in sign in request
     if (tokenresponse.state != sessionStorage.authState) {
-      sessionStorage.removeItem('authState');
-      sessionStorage.removeItem('authNonce');
-      // Report error
-      window.location.hash = '#error=Invalid+state&error_description=The+state+in+the+authorization+response+did+not+match+the+expected+value.+Please+try+signing+in+again.';
-      return;
+        console.log('log.info.ERROR :'+'Error occured.');
+        sessionStorage.removeItem('authState');
+        sessionStorage.removeItem('authNonce');
+        // Report error
+        window.location.hash = '#error=Invalid+state&error_description=The+state+in+the+authorization+response+did+not+match+the+expected+value.+Please+try+signing+in+again.';
+        return;
     }
 
     sessionStorage.authState = '';
     sessionStorage.accessToken = tokenresponse.access_token;
-    
+
     // Get the number of seconds the token is valid for,
     // Subract 5 minutes (300 sec) to account for differences in clock settings
     // Convert to milliseconds
@@ -166,21 +192,22 @@ $(function() {
     sessionStorage.idToken = tokenresponse.id_token;
 
     validateIdToken(function(isValid) {
-      if (isValid) {
-        // Re-render token to handle refresh
-        renderTokens();
-        
-        // Redirect to home page
-        window.location.hash = '#';
-      } else {
-        clearUserState();
-        // Report error
-        window.location.hash = '#error=Invalid+ID+token&error_description=ID+token+failed+validation,+please+try+signing+in+again.';
-      }
-    });
-  }
+        if (isValid) {
+            // Re-render token to handle refresh
+            console.log('log.info :'+'valid token.');
+            renderTokens();
 
-  function validateIdToken(callback) {
+            // Redirect to home page
+            window.location.hash = '#';
+        } else {
+            clearUserState();
+            // Report error
+            window.location.hash = '#error=Invalid+ID+token&error_description=ID+token+failed+validation,+please+try+signing+in+again.';
+        }
+    });
+}
+
+function validateIdToken(callback) {
     // Per Azure docs (and OpenID spec), we MUST validate
     // the ID token before using it. However, full validation
     // of the signature currently requires a server-side component
@@ -189,13 +216,13 @@ $(function() {
     // minimal validation
 
     if (null == sessionStorage.idToken || sessionStorage.idToken.length <= 0) {
-      callback(false);
+        callback(false);
     }
 
     // JWT is in three parts seperated by '.'
     var tokenParts = sessionStorage.idToken.split('.');
     if (tokenParts.length != 3){
-      callback(false);
+        callback(false);
     }
 
     // Parse the token parts
@@ -204,21 +231,21 @@ $(function() {
 
     // Check the nonce
     if (payload.nonce != sessionStorage.authNonce) {
-      sessionStorage.authNonce = '';
-      callback(false);
+        sessionStorage.authNonce = '';
+        callback(false);
     }
 
     sessionStorage.authNonce = '';
 
     // Check the audience
     if (payload.aud != appId) {
-      callback(false);
+        callback(false);
     }
 
     // Check the issuer
     // Should be https://login.microsoftonline.com/{tenantid}/v2.0
     if (payload.iss !== 'https://login.microsoftonline.com/' + payload.tid + '/v2.0') {
-      callback(false);
+        callback(false);
     }
 
     // Check the valid dates
@@ -227,7 +254,7 @@ $(function() {
     var notBefore = new Date((payload.nbf - 300) * 1000);
     var expires = new Date((payload.exp + 300) * 1000);
     if (now < notBefore || now > expires) {
-      callback(false);
+        callback(false);
     }
 
     // Now that we've passed our checks, save the bits of data
@@ -239,13 +266,13 @@ $(function() {
     // Per the docs at:
     // https://azure.microsoft.com/en-us/documentation/articles/active-directory-v2-protocols-implicit/#send-the-sign-in-request
     // Check if this is a consumer account so we can set domain_hint properly
-    sessionStorage.userDomainType = 
-      payload.tid === '9188040d-6c67-4c5b-b112-36a304b66dad' ? 'consumers' : 'organizations';
+    sessionStorage.userDomainType =
+        payload.tid === '9188040d-6c67-4c5b-b112-36a304b66dad' ? 'consumers' : 'organizations';
 
     callback(true);
-  }
+}
 
-  function makeSilentTokenRequest(callback) {
+function makeSilentTokenRequest(callback) {
     // Build up a hidden iframe
     var iframe = $('<iframe/>');
     iframe.attr('id', 'auth-iframe');
@@ -254,144 +281,135 @@ $(function() {
     iframe.hide();
 
     iframe.load(function() {
-      callback(sessionStorage.accessToken);
+        callback(sessionStorage.accessToken);
     });
-    
-    iframe.attr('src', buildAuthUrl() + '&prompt=none&domain_hint=' + 
-      sessionStorage.userDomainType + '&login_hint=' + 
-      sessionStorage.userSigninName);
-  }
 
-  // Helper method to validate token and refresh
-  // if needed
-  function getAccessToken(callback) {
+    iframe.attr('src', buildAuthUrl() + '&prompt=none&domain_hint=' +
+        sessionStorage.userDomainType + '&login_hint=' +
+        sessionStorage.userSigninName);
+}
+
+// Helper method to validate token and refresh
+// if needed
+function getAccessToken(callback) {
     var now = new Date().getTime();
     var isExpired = now > parseInt(sessionStorage.tokenExpires);
     // Do we have a token already?
     if (sessionStorage.accessToken && !isExpired) {
-      // Just return what we have
-      if (callback) {
-        callback(sessionStorage.accessToken);
-      }
-    } else {
-      // Attempt to do a hidden iframe request
-      makeSilentTokenRequest(callback);
-    }
-  }
-
-  // OUTLOOK API FUNCTIONS =======================
-  function getUserEmailAddress(callback) {
-    if (sessionStorage.userEmail) {
-      callback(sessionStorage.userEmail);
-    } else {
-      getAccessToken(function(accessToken) {
-        if (accessToken) {
-          // Create a Graph client
-          var client = MicrosoftGraph.Client.init({
-            authProvider: (done) => {
-              // Just return the token
-              done(null, accessToken);
-            }
-          });
-
-          // Get the Graph /Me endpoint to get user email address
-          client
-            .api('/me')
-            .get((err, res) => {
-              if (err) {
-                callback(null, err);
-              } else {
-                callback(res.mail);
-              }
-            });
-        } else {
-          var error = { responseText: 'Could not retrieve access token' };
-          callback(null, error);
+        // Just return what we have
+        if (callback) {
+            callback(sessionStorage.accessToken);
         }
-      });
+    } else {
+        // Attempt to do a hidden iframe request
+        makeSilentTokenRequest(callback);
     }
-  }
+}
 
-  function getUserEvents(emailAddress, callback) {
+// OUTLOOK API FUNCTIONS =======================
+function getUserEmailAddress(callback) {
+    if (sessionStorage.userEmail) {
+        callback(sessionStorage.userEmail);
+    } else {
+        getAccessToken(function(accessToken) {
+            if (accessToken) {
+                // Create a Graph client
+                var client = MicrosoftGraph.Client.init({
+                    authProvider: (done) => {
+                    // Just return the token
+                    done(null, accessToken);
+            }
+            });
+
+                // Get the Graph /Me endpoint to get user email address
+                client
+                    .api('/me')
+                    .get((err, res) => {
+                    if (err) {
+                        callback(null, err);
+                    } else {
+                        callback(res.mail);
+            }
+            });
+            } else {
+                var error = { responseText: 'Could not retrieve access token' };
+                callback(null, error);
+            }
+        });
+    }
+}
+
+function getUserEvents(emailAddress, callback) {
     getAccessToken(function(accessToken) {
-      if (accessToken) {
-        // Create a Graph client
-        var client = MicrosoftGraph.Client.init({
-          authProvider: (done) => {
-            // Just return the token
-            done(null, accessToken);
-          }
+        if (accessToken) {
+            // Create a Graph client
+            var client = MicrosoftGraph.Client.init({
+                authProvider: (done) => {
+                // Just return the token
+                done(null, accessToken);
+        }
         });
 
-        // Get the 10 newest events
-        client
-          .api('/me/events')
-          .header('X-AnchorMailbox', emailAddress)
-          .top(10)
-          .select('subject,start,end,createdDateTime')
-          .orderby('createdDateTime DESC')
-          .get((err, res) => {
-            if (err) {
-              callback(null, err);
-            } else {
-              callback(res.value);
-            }
-          });
-      } else {
-        var error = { responseText: 'Could not retrieve access token' };
-        callback(null, error);
-      }
+            // Get the 10 newest events
+            client
+                .api('/me/events')
+                .header('X-AnchorMailbox', emailAddress)
+                .top(10)
+                .select('subject,start,end,createdDateTime')
+                .orderby('createdDateTime DESC')
+                .get((err, res) => {
+                if (err) {
+                    callback(null, err);
+                } else {
+                    callback(res.value);
+        }
+        });
+        } else {
+            var error = { responseText: 'Could not retrieve access token' };
+            callback(null, error);
+        }
     });
-  }
+}
 
-  // HELPER FUNCTIONS ============================
+// HELPER FUNCTIONS ============================
 
-  function guid() {
+function guid() {
     var buf = new Uint16Array(8);
-    cryptObj.getRandomValues(buf);
+    obj.cryptObj.getRandomValues(buf);
     function s4(num) {
-      var ret = num.toString(16);
-      while (ret.length < 4) {
-        ret = '0' + ret;
-      }
-      return ret;
+        var ret = num.toString(16);
+        while (ret.length < 4) {
+            ret = '0' + ret;
+        }
+        return ret;
     }
     return s4(buf[0]) + s4(buf[1]) + '-' + s4(buf[2]) + '-' + s4(buf[3]) + '-' +
-      s4(buf[4]) + '-' + s4(buf[5]) + s4(buf[6]) + s4(buf[7]);
-  }
+        s4(buf[4]) + '-' + s4(buf[5]) + s4(buf[6]) + s4(buf[7]);
+}
 
-  function parseHashParams(hash) {
+function parseHashParams(hash) {
     var params = hash.slice(1).split('&');
-    
+
     var paramarray = {};
     params.forEach(function(param) {
-      param = param.split('=');
-      paramarray[param[0]] = param[1];
+        param = param.split('=');
+        paramarray[param[0]] = param[1];
     });
-    
-    return paramarray;
-  }
 
-  function decodePlusEscaped(value) {
+    return paramarray;
+}
+
+function decodePlusEscaped(value) {
     // decodeURIComponent doesn't handle spaces escaped
     // as '+'
     if (value) {
-      return decodeURIComponent(value.replace(/\+/g, ' '));
+        return decodeURIComponent(value.replace(/\+/g, ' '));
     } else {
-      return '';
+        return '';
     }
-  }
+}
 
-  function clearUserState() {
+function clearUserState() {
     // Clear session
     sessionStorage.clear();
-  }
-
-  Handlebars.registerHelper("formatDate", function(datetime){
-    // Dates from API look like:
-    // 2016-06-27T14:06:13Z
-
-    var date = new Date(datetime);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-  });
-});
+}
