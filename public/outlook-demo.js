@@ -32,56 +32,22 @@ $(function() {
     // renderNav(isAuthenticated);
   renderTokens();
 
-  // renderWelcome(isAuthenticated);
-
-
   render(window.location.hash);
 
   $(window).on('hashchange', function() {
     render(window.location.hash);
   });
-  
+
   function render(hash) {
 
     var action = hash.split('=')[0];
 
-    // Check for presence of access token
-    // var isAuthenticated = (sessionStorage.accessToken != null && sessionStorage.accessToken.length > 0);
-    // console.log('log.info :'+isAuthenticated);
-    // renderNav(isAuthenticated);
-    // renderTokens();
-    
     var pagemap = {
-      
-      // Welcome page
-      // '': function() {
-      //   renderWelcome(isAuthenticated);
-      // },
-
-      // Receive access token
       '#access_token': function() {
         handleTokenResponse(hash);
       },
-
-      // Signout
-      '#signout': function () {
-        clearUserState();
-        console.log('log.info : '+'User state cleared.');
-          window.location.hash = '#';
-      },
-
-      // Display calendar
-      '#calendar': function () {
-        if (isAuthenticated) {
-            console.log('log.info : '+'Authenticated.');
-            renderCalendar();
-        } else {
-          console.log('log.info : '+'Authentication Isuue.');
-        }
-          window.location.hash = '#';
-      }
     };
-    
+
     if (pagemap[action]){
       pagemap[action]();
     } else {
@@ -90,16 +56,6 @@ $(function() {
     }
 
   }
-
-
-
-  // Handlebars.registerHelper("formatDate", function(datetime){
-  //   // Dates from API look like:
-  //   // 2016-06-27T14:06:13Z
-  //
-  //   var date = new Date(datetime);
-  //   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-  // });
 });
 
 
@@ -128,7 +84,6 @@ function renderWelcome(isAuthed) {
         console.log('log.info : '+'User already authencated.');
     } else {
         $('#connect-button').attr('href', buildAuthUrl());
-        // $('#signin-prompt').show();
     }
 }
 
@@ -284,22 +239,22 @@ function validateIdToken(callback) {
     callback(true);
 }
 
-// function makeSilentTokenRequest(callback) {
-//     // Build up a hidden iframe
-//     var iframe = $('<iframe/>');
-//     iframe.attr('id', 'auth-iframe');
-//     iframe.attr('name', 'auth-iframe');
-//     iframe.appendTo('body');
-//     iframe.hide();
-//
-//     iframe.load(function() {
-//         callback(sessionStorage.accessToken);
-//     });
-//
-//     iframe.attr('src', buildAuthUrl() + '&prompt=none&domain_hint=' +
-//         sessionStorage.userDomainType + '&login_hint=' +
-//         sessionStorage.userSigninName);
-// }
+function makeSilentTokenRequest(callback) {
+    // Build up a hidden iframe
+    var iframe = $('<iframe/>');
+    iframe.attr('id', 'auth-iframe');
+    iframe.attr('name', 'auth-iframe');
+    iframe.appendTo('body');
+    iframe.hide();
+
+    iframe.load(function() {
+        callback(sessionStorage.accessToken);
+    });
+
+    iframe.attr('src', buildAuthUrl() + '&prompt=none&domain_hint=' +
+        sessionStorage.userDomainType + '&login_hint=' +
+        sessionStorage.userSigninName);
+}
 
 // Helper method to validate token and refresh
 // if needed
