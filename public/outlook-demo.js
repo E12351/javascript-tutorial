@@ -7,17 +7,18 @@ $(function() {
 
   // Check for browser support for sessionStorage
   if (typeof(Storage) === 'undefined') {
-    render('#unsupportedbrowser');
+    console.log('log.info.ERROR : '+'Un supported for session storage.');
     return;
   }
 
   // Check for browser support for crypto.getRandomValues
   var cryptObj = window.crypto || window.msCrypto; // For IE11
+
   if (cryptObj === undefined || cryptObj.getRandomValues === 'undefined') {
-    render('#unsupportedbrowser');
+    console.log('log.info.ERROR : '+'Un supported browser.');
     return;
   }
-  
+
   render(window.location.hash);
 
   $(window).on('hashchange', function() {
@@ -28,12 +29,9 @@ $(function() {
 
     var action = hash.split('=')[0];
 
-    // Hide everything
-    $('.main-container .page').hide();
-
     // Check for presence of access token
     var isAuthenticated = (sessionStorage.accessToken != null && sessionStorage.accessToken.length > 0);
-    renderNav(isAuthenticated);
+    // renderNav(isAuthenticated);
     renderTokens();
     
     var pagemap = {
@@ -45,63 +43,23 @@ $(function() {
 
       // Receive access token
       '#access_token': function() {
-        handleTokenResponse(hash);             
+        handleTokenResponse(hash);
       },
 
       // Signout
       '#signout': function () {
         clearUserState();
-        
-        // Redirect to home page
-        window.location.hash = '#';
-      },
-
-      // Error display
-      '#error': function () {
-        var errorresponse = parseHashParams(hash);
-        if (errorresponse.error === 'login_required' ||
-            errorresponse.error === 'interaction_required') {
-          // For these errors redirect the browser to the login
-          // page.
-          window.location = buildAuthUrl();
-        } else {
-          renderError(errorresponse.error, errorresponse.error_description);
-        }
-      },
-
-      // Display inbox
-      '#inbox': function () {
-        if (isAuthenticated) {
-          renderInbox();  
-        } else {
-          // Redirect to home page
-          window.location.hash = '#';
-        }
+        console.log('log.info : '+'User state cleared.');
       },
 
       // Display calendar
       '#calendar': function () {
         if (isAuthenticated) {
-          renderCalendar();  
+            console.log('log.info : '+'Authenticated.');
+            renderCalendar();
         } else {
-          // Redirect to home page
-          window.location.hash = '#';
+          console.log('log.info : '+'Authentication Isuue.');
         }
-      },
-
-      // Display contacts
-      '#contacts': function () {
-        if (isAuthenticated) {
-          renderContacts();  
-        } else {
-          // Redirect to home page
-          window.location.hash = '#';
-        }
-      },
-
-      // Shown if browser doesn't support session storage
-      '#unsupportedbrowser': function () {
-        $('#unsupported').show();
       }
     }
     
@@ -110,19 +68,6 @@ $(function() {
     } else {
       // Redirect to home page
       window.location.hash = '#';
-    }
-  }
-
-  function setActiveNav(navId) {
-    $('#navbar').find('li').removeClass('active');
-    $(navId).addClass('active');
-  }
-
-  function renderNav(isAuthed) {
-    if (isAuthed) {
-      $('.authed-nav').show();
-    } else {
-      $('.authed-nav').hide();
     }
   }
 
@@ -141,98 +86,21 @@ $(function() {
     }
   }
 
-  function renderError(error, description) {
-    $('#error-name', window.parent.document).text('An error occurred: ' + decodePlusEscaped(error));
-    $('#error-desc', window.parent.document).text(decodePlusEscaped(description));
-    $('#error-display', window.parent.document).show();
-  }
   
   function renderWelcome(isAuthed) {
-    setActiveNav('#home-nav');
     if (isAuthed) {
-      $('#username').text(sessionStorage.userDisplayName);
-      $('#logged-in-welcome').show();
+      console.log('log.info : '+'User already authencated.');
     } else {
       $('#connect-button').attr('href', buildAuthUrl());
       $('#signin-prompt').show();
     }
   }
 
-  function renderInbox() {
-    setActiveNav('#inbox-nav');
-    $('#inbox-status').text('Loading...');
-    $('#message-list').empty();
-    $('#inbox').show();
-    // Get user's email address
-    getUserEmailAddress(function(userEmail, error) {
-      if (error) {
-        renderError('getUserEmailAddress failed', error.responseText);
-      } else {
-        getUserInboxMessages(userEmail, function(messages, error){
-          if (error) {
-            renderError('getUserInboxMessages failed', error);
-          } else {
-            $('#inbox-status').text('Here are the 10 most recent messages in your inbox.');
-            var templateSource = $('#msg-list-template').html();
-            var template = Handlebars.compile(templateSource);
-
-            var msgList = template({messages: messages});
-            $('#message-list').append(msgList);
-          }
-        });
-      }
-    });
-  }
-
   function renderCalendar() {
-    setActiveNav('#calendar-nav');
-    $('#calendar-status').text('Loading...');
-    $('#event-list').empty();
-    $('#calendar').show();
-    // Get user's email address
     getUserEmailAddress(function(userEmail, error) {
-      if (error) {
-        renderError('getUserEmailAddress failed', error.responseText);
-      } else {
         getUserEvents(userEmail, function(events, error){
-          if (error) {
-            renderError('getUserEvents failed', error);
-          } else {
-            $('#calendar-status').text('Here are the 10 most recently created events on your calendar.');
-            var templateSource = $('#event-list-template').html();
-            var template = Handlebars.compile(templateSource);
-
-            var eventList = template({events: events});
-            $('#event-list').append(eventList);
-          }
+            console.log(events);
         });
-      }
-    });
-  }
-
-  function renderContacts() {
-    setActiveNav('#contacts-nav');
-    $('#contacts-status').text('Loading...');
-    $('#contact-list').empty();
-    $('#contacts').show();
-    // Get user's email address
-    getUserEmailAddress(function(userEmail, error) {
-      if (error) {
-        renderError('getUserEmailAddress failed', error.responseText);
-      } else {
-        getUserContacts(userEmail, function(contacts, error){
-          if (error) {
-            renderError('getUserContacts failed', error);
-          } else {
-            $('#contacts-status').text('Here are your first 10 contacts.');
-            var templateSource = $('#contact-list-template').html();
-            var template = Handlebars.compile(templateSource);
-
-            var contactList = template({contacts: contacts});
-            $('#contact-list').append(contactList);
-          }
-        });
-      }
     });
   }
 
@@ -252,7 +120,9 @@ $(function() {
       nonce: sessionStorage.authNonce,
       response_mode: 'fragment'
     };
-    
+
+    console.log('log.info :'+authEndpoint + $.param(authParams));
+
     return authEndpoint + $.param(authParams);
   }
 
@@ -435,38 +305,6 @@ $(function() {
     }
   }
 
-  function getUserInboxMessages(emailAddress, callback) {
-    getAccessToken(function(accessToken) {
-      if (accessToken) {
-        // Create a Graph client
-        var client = MicrosoftGraph.Client.init({
-          authProvider: (done) => {
-            // Just return the token
-            done(null, accessToken);
-          }
-        });
-
-        // Get the 10 newest messages
-        client
-          .api('/me/mailfolders/inbox/messages')
-          .header('X-AnchorMailbox', emailAddress)
-          .top(10)
-          .select('subject,from,receivedDateTime,bodyPreview')
-          .orderby('receivedDateTime DESC')
-          .get((err, res) => {
-            if (err) {
-              callback(null, err);
-            } else {
-              callback(res.value);
-            }
-          });
-      } else {
-        var error = { responseText: 'Could not retrieve access token' };
-        callback(null, error);
-      }
-    });
-  }
-
   function getUserEvents(emailAddress, callback) {
     getAccessToken(function(accessToken) {
       if (accessToken) {
@@ -485,39 +323,6 @@ $(function() {
           .top(10)
           .select('subject,start,end,createdDateTime')
           .orderby('createdDateTime DESC')
-          .get((err, res) => {
-            if (err) {
-              callback(null, err);
-            } else {
-              callback(res.value);
-            }
-          });
-      } else {
-        var error = { responseText: 'Could not retrieve access token' };
-        callback(null, error);
-      }
-    });
-  }
-
-  function getUserContacts(emailAddress, callback) {
-    getAccessToken(function(accessToken) {
-      if (accessToken) {
-        // Create a Graph client
-        var client = MicrosoftGraph.Client.init({
-          authProvider: (done) => {
-            // Just return the token
-            done(null, accessToken);
-          }
-        });
-
-        // Get the first 10 contacts in alphabetical order
-        // by given name
-        client
-          .api('/me/contacts')
-          .header('X-AnchorMailbox', emailAddress)
-          .top(10)
-          .select('givenName,surname,emailAddresses')
-          .orderby('givenName ASC')
           .get((err, res) => {
             if (err) {
               callback(null, err);
