@@ -7,7 +7,7 @@ $(function() {
 
   // Check for browser support for sessionStorage
   if (typeof(Storage) === 'undefined') {
-    console.log('log.info.ERROR : '+'Un supported for session storage.');
+    console.log('log.info.ERROR : '+'Unsupported for session storage.');
     return;
   }
 
@@ -18,6 +18,12 @@ $(function() {
     console.log('log.info.ERROR : '+'Un supported browser.');
     return;
   }
+
+
+  var isAuthenticated = (sessionStorage.accessToken != null && sessionStorage.accessToken.length > 0);
+    // renderNav(isAuthenticated);
+  renderTokens();
+
 
   render(window.location.hash);
 
@@ -30,9 +36,9 @@ $(function() {
     var action = hash.split('=')[0];
 
     // Check for presence of access token
-    var isAuthenticated = (sessionStorage.accessToken != null && sessionStorage.accessToken.length > 0);
-    // renderNav(isAuthenticated);
-    renderTokens();
+    // var isAuthenticated = (sessionStorage.accessToken != null && sessionStorage.accessToken.length > 0);
+    // // renderNav(isAuthenticated);
+    // renderTokens();
     
     var pagemap = {
       
@@ -61,7 +67,7 @@ $(function() {
           console.log('log.info : '+'Authentication Isuue.');
         }
       }
-    }
+    };
     
     if (pagemap[action]){
       pagemap[action]();
@@ -69,6 +75,7 @@ $(function() {
       // Redirect to home page
       window.location.hash = '#';
     }
+
   }
 
   function renderTokens() {
